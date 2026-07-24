@@ -15,16 +15,19 @@ def extract():
         return jsonify({'status': 'error', 'message': 'URL parameter is missing'}), 400
 
     try:
-        # YouTube Direct Stream Link Extraction Config
+        # YouTube Bot Check ကို ကျော်လွှားရန် Mobile Client များ သုံးခြင်း
         ydl_opts = {
             'format': 'best',
-            'quiet': True
+            'quiet': True,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'ios']
+                }
+            }
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
-            
-            # Direct Download Link ရယူခြင်း
             download_url = info.get('url')
             title = info.get('title')
 
@@ -37,6 +40,4 @@ def extract():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
 
