@@ -1,6 +1,5 @@
-
 from flask import Flask, request, jsonify
-import yt_dlp
+import requests
 
 app = Flask(__name__)
 
@@ -16,29 +15,31 @@ def extract():
         return jsonify({'status': 'error', 'message': 'URL parameter is missing'}), 400
 
     try:
-        # YouTube Bot Check ကို ကျော်လွှားရန် Client Types များ စုံအောင် သတ်မှတ်ခြင်း
-        ydl_opts = {
-            'format': 'best',
-            'quiet': True,
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android_vr', 'ios', 'mweb']
-                }
-            }
+        # Cobalt Public API သို့ လှမ်းတောင်းခြင်း
+        cobalt_url = "https://api.cobalt.tools/api/json"
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
         }
-        
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(video_url, download=False)
-            download_url = info.get('url')
-            title = info.get('title')
+        payload = {
+            "url": video_url,
+            "vQuality": "720"
+        }
 
+        response = requests.post(cobalt_url, json=payload, headers=headers)
+        data = response.json()
+
+        if "url" in data:
             return jsonify({
                 'status': 'success',
-                'title': title,
-                'download_url': download_url
+                'title': 'YouTube Video',
+                'download_url': data['url']
             })
+        else:
+            return jsonify({'status': 'error', 'message': 'Failed to extract video'}), 500
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
 
 
