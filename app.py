@@ -4,12 +4,14 @@ import re
 
 app = Flask(__name__)
 
-# အလုပ်လုပ်နေသည့် Piped Public Instances စာရင်း
-PIPED_INSTANCES = [
-    "https://pipedapi.kavin.rocks",
-    "https://api.piped.mha.fi",
-    "https://pipedapi.adminforge.de",
-    "https://piped-api.garudalinux.org"
+# အလုပ်လုပ်နေသည့် Invidious နှင့် Piped Server များ စာရင်း
+SERVERS = [
+    {"type": "invidious", "url": "https://invidious.nerdvpn.de"},
+    {"type": "invidious", "url": "https://inv.tux.pizza"},
+    {"type": "invidious", "url": "https://invidious.drgns.space"},
+    {"type": "piped", "url": "https://pipedapi.kavin.rocks"},
+    {"type": "piped", "url": "https://api.piped.mha.fi"},
+    {"type": "piped", "url": "https://pipedapi.adminforge.de"}
 ]
 
 def extract_video_id(url):
@@ -38,47 +40,44 @@ def extract():
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
 
-    # Instance တစ်ခုချင်းစီကို ပတ်ပြီး စမ်းခေါ်ခြင်း
-    data = None
-    for instance in PIPED_INSTANCES:
+    # Server စာရင်းကို အစဉ်လိုက် ပတ်ပြီး စမ်းခေါ်ခြင်း
+    for server in SERVERS:
         try:
-            piped_url = f"{instance}/streams/{video_id}"
-            response = requests.get(piped_url, headers=headers, timeout=5)
-            if response.status_code == 200:
-                data = response.json()
-                break # အဆင်ပြေသွားရင် loop ထဲက ထွက်မည်
+            if server["type"] == "invidious":
+                api_url = f"{server['url']}/api/v1/videos/{video_id}"
+                res = requests.get(api_url, headers=headers, timeout=4)
+                if res.status_code == 200:
+                    data = res.json()
+                    streams = data.get("formatStreams", [])
+                    if streams:
+                        # Direct MP4 Download Link ရယူခြင်း
+                        download_url = streams[-1].get("url") # အကောင်းဆုံး Quality ကိုယူမည်
+                        title = data.get("title", "YouTube Video")
+                        return jsonify({
+                            'status': 'success',
+                            'title': title,
+                            'download_url': download_url
+                        })
+
+            elif server["type"] == "piped":
+                api_url = f"{server['url']}/streams/{video_id}"
+                res = requests.get(api_url, headers=headers, timeout=4)
+                if res.status_code == 200:
+                    data = res.json()
+                    streams = data.get("videoStreams", [])
+                    if streams:
+                        download_url = streams[0].get("url")
+                        title = data.get("title", "YouTube Video")
+                        return jsonify({
+                            'status': 'success',
+                            'title': title,
+                            'download_url': download_url
+                        })
         except Exception:
-            continue # အဆင်မပြေပါက နောက်တစ်လုံးသို့ ဆက်သွားမည်
+            continue
 
-    if not data:
-        return jsonify({'status': 'error', 'message': 'All API instances are down. Please try again later.'}), 500
+    return jsonify({'status': 'error', 'message': 'All API instances are currently busy or down. Please try again.'}), 500
 
-    try:
-        video_streams = data.get("videoStreams", [])
-        
-        # 720p / 480p / 360p အဆင်ပြေဆုံး stream link ကို ယူခြင်း
-        download_url = None
-        for stream in video_streams:
-            if stream.get("quality") in ["720p", "1080p", "480p", "360p"]:
-                download_url = stream.get("url")
-                break
-        
-        if not download_url and len(video_streams) > 0:
-            download_url = video_streams[0].get("url")
-
-        title = data.get("title", "YouTube Video")
-
-        if download_url:
-            return jsonify({
-                'status': 'success',
-                'title': title,
-                'download_url': download_url
-            })
-        else:
-            return jsonify({'status': 'error', 'message': 'No download streams found'}), 400
-
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 
