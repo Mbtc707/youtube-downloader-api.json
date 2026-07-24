@@ -1,3 +1,4 @@
+
 from flask import Flask, request, jsonify
 import yt_dlp
 
@@ -15,13 +16,13 @@ def extract():
         return jsonify({'status': 'error', 'message': 'URL parameter is missing'}), 400
 
     try:
-        # YouTube Bot Check ကို ကျော်လွှားရန် Mobile Client များ သုံးခြင်း
+        # YouTube Bot Check ကို ကျော်လွှားရန် Client Types များ စုံအောင် သတ်မှတ်ခြင်း
         ydl_opts = {
             'format': 'best',
             'quiet': True,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android', 'ios']
+                    'player_client': ['android_vr', 'ios', 'mweb']
                 }
             }
         }
